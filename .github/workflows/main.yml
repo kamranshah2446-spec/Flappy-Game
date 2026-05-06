@@ -7,16 +7,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
-      - name: Install Capacitor
+          node-version: 20
+      - name: Install Tools
         run: |
           npm install @capacitor/cli @capacitor/core @capacitor/android
           npx cap init "MyGame" "com.myname.game" --web-dir .
           npx cap add android
-          npx cap copy android
+      - name: Copy Files
+        run: npx cap copy android
       - name: Build APK
         run: |
           cd android
+          chmod +x gradlew
           ./gradlew assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
