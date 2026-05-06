@@ -27,7 +27,7 @@ jobs:
           npx cap copy android
           cd android
           chmod +x gradlew
-          ./gradlew clean assembleDebug --stacktrace
+          ./gradlew clean assembleDebug -Dorg.gradle.java.home=$JAVA_HOME_17_X64
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
