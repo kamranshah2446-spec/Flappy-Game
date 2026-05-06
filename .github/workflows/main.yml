@@ -16,7 +16,6 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '21'
-          cache: 'gradle'
 
       - name: Prepare Game Folder
         run: |
@@ -32,15 +31,15 @@ jobs:
       - name: Force Version Alignment
         run: |
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-          sed -i 's/sourceCompatibility = .*/sourceCompatibility = JavaVersion.VERSION_21/' android/app/build.gradle
-          sed -i 's/targetCompatibility = .*/targetCompatibility = JavaVersion.VERSION_21/' android/app/build.gradle
+          sed -i 's/sourceCompatibility = .*/sourceCompatibility = JavaVersion.VERSION_21/' android/app/build.gradle || true
+          sed -i 's/targetCompatibility = .*/targetCompatibility = JavaVersion.VERSION_21/' android/app/build.gradle || true
 
       - name: Final Build
         run: |
           npx cap copy android
           cd android
           chmod +x gradlew
-          ./gradlew clean assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace
           
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4
