@@ -30,7 +30,7 @@ jobs:
       - name: Set up project and install Capacitor
         run: |
           npm init -y
-          npm install @capacitor/cli @capacitor/core @capacitor/android
+          npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/assets
 
       - name: Create www folder and copy game
         run: |
@@ -50,6 +50,12 @@ jobs:
 
       - name: Add Android platform
         run: npx cap add android
+
+      - name: Generate app icon
+        run: |
+          mkdir -p assets
+          cp icon.png assets/icon.png
+          npx @capacitor/assets generate --iconBackgroundColor '#ffffff' --android
 
       - name: Sync web assets
         run: npx cap sync android
