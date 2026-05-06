@@ -22,24 +22,19 @@ jobs:
           mkdir -p www
           cp index.html www/
           
-      - name: Install Android Tools
+      - name: Fresh Install Tools
         run: |
+          rm -rf android
           npm install @capacitor/cli @capacitor/core @capacitor/android
           npx cap init "MyGame" "com.myname.game" --web-dir www
           npx cap add android
           
-      - name: Force Version Alignment
-        run: |
-          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-          sed -i 's/sourceCompatibility = .*/sourceCompatibility = JavaVersion.VERSION_21/' android/app/build.gradle || true
-          sed -i 's/targetCompatibility = .*/targetCompatibility = JavaVersion.VERSION_21/' android/app/build.gradle || true
-
       - name: Final Build
         run: |
           npx cap copy android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew clean assembleDebug --stacktrace
           
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4
