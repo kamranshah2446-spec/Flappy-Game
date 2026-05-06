@@ -12,10 +12,10 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
+          java-version: '17'
       - name: Prepare Folders
         run: |
-          mkdir www
+          mkdir -p www
           cp index.html www/
       - name: Install Tools
         run: |
@@ -27,7 +27,7 @@ jobs:
           npx cap copy android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew clean assembleDebug --stacktrace
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
