@@ -6,11 +6,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Java 17
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -20,21 +20,21 @@ jobs:
       - name: Prepare Game Folder
         run: |
           mkdir -p www
-          cp index.html www/ || echo "index.html not found, skipping copy"
+          cp index.html www/ || echo "index.html not found"
           
-      - name: Force Clean Rebuild
+      - name: Fresh Install Tools
         run: |
           rm -rf android
           npm install @capacitor/cli @capacitor/core @capacitor/android
           npx cap init "MyGame" "com.myname.game" --web-dir www
           npx cap add android
           
-      - name: Build APK (Nuclear Method)
+      - name: Build APK
         run: |
           npx cap copy android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug -Dorg.gradle.java.home=$JAVA_HOME_17_X64 --no-daemon
+          ./gradlew assembleDebug -Dorg.gradle.java.home=$JAVA_HOME_21_X64
           
       - name: Upload Finished APK
         uses: actions/upload-artifact@v4
