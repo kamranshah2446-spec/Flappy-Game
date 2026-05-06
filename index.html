@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Flappy Ultra HD - Cross Platform</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #050505;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+            touch-action: none; /* Prevents double-tap zoom and scrolling */
+        }
+
+        #game-container {
+            position: relative;
+            /* Height-based sizing to ensure it fits mobile heights */
+            height: 98vh;
+            aspect-ratio: 9 / 16;
+            max-width: 100vw;
+            box-shadow: 0 0 100px rgba(0, 0, 0, 0.8);
+            background-color: #87CEEB;
+            border-radius: min(24px, 4vw);
+            overflow: hidden;
+            border: 6px solid #1a1a1a;
+        }
+
+        /* Fallback for browsers that don't support aspect-ratio */
+        @supports not (aspect-ratio: 9 / 16) {
+            #game-container {
+                width: calc(98vh * 0.5625);
+            }
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="1080" height="1920"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const W = 1080;
+        const H = 1920;
+        const DEGREE = Math.PI / 180;
+        let frames = 0;
+
+        const state = {
+            current: 0,
+            getReady: 0,
+            game: 1,
+            over: 2
+        };
+
+        const flap = () => {
+            if (state.current === state.getReady) {
+                state.current = state.game;
+                bird.flap();
+            } else if (state.current === state.game) {
+                bird.flap();
+            } else if (state.current === state.over) {
+                resetGame();
+            }
+        };
+
+        // Inputs for PC and Mobile
+        window.addEventListener("keydown", e => { 
+            if(e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
+                e.preventDefault();
+                flap(); 
+            }
+        });
+        
+        canvas.addEventListener("mousedown", (e) => {
+            if (e.button === 0) flap(); // Left click
+        });
+
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault(); 
+            flap();
+        }, {passive: false});
+
+        const bg = {
+            mtn1X: 0,
+            mtn2X: 0,
+            
+            draw: function() {
+                let skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+                skyGrad.addColorStop(0, "#3498db");
+                skyGrad.addColorStop(0.8, "#ffffff");
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, W, H);
+
+                ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+                ctx.beginPath();
+                ctx.arc(800, 300, 150, 0, Math.PI * 2);
+                ctx.fill();
+
+                this.drawMtnRange(this.mtn1X, 0.15, "#a29bfe", H * 0.6);
+                this.drawMtnRange(this.mtn1X + W, 0.15, "#a29bfe", H * 0.6);
+
+                this.drawMtnRange(this.mtn2X, 0.3, "#74b9ff", H * 0.7);
+                this.drawMtnRange(this.mtn2X + W, 0.3, "#74b9ff", H * 0.7);
+            },
+
+            drawMtnRange: function(x, alpha, color, baseY) {
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x, H);
+                ctx.lineTo(x, baseY + 200);
+                ctx.bezierCurveTo(x + W*0.2, baseY - 200, x + W*0.4, baseY + 300, x + W*0.5, baseY + 50);
+                ctx.bezierCurveTo(x + W*0.7, baseY - 250, x + W*0.9, baseY + 200, x + W, baseY + 150);
+                ctx.lineTo(x + W, H);
+                ctx.closePath();
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            },
+
+            update: function() {
+                if(state.current === state.game) {
+                    this.mtn1X = (this.mtn1X - 1.5) % W;
+                    this.mtn2X = (this.mtn2X - 3.5) % W;
+                }
+            }
+        };
+
+        const fg = {
+            x: 0,
+            h: 300,
+            speed: 12,
+            draw: function() {
+                ctx.fillStyle = "#2ecc71";
+                ctx.fillRect(0, H - this.h, W, this.h);
+                ctx.fillStyle = "rgba(0,0,0,0.15)";
+                ctx.fillRect(0, H - this.h, W, 25);
+
+                ctx.fillStyle = "#27ae60";
+                for(let i = 0; i < 20; i++) {
+                    let posX = (this.x + i * 100) % (W + 100);
+                    ctx.beginPath();
+                    ctx.moveTo(posX, H - this.h);
+                    ctx.lineTo(posX + 25, H - this.h + 50);
+                    ctx.lineTo(posX - 25, H - this.h + 50);
+                    ctx.fill();
+                }
+            },
+            update: function() {
+                if(state.current === state.game) {
+                    this.x = (this.x - this.speed) % W;
+                }
+            }
+        };
+
+        const bird = {
+            x: W * 0.3,
+            y: H / 2,
+            radius: 50, // Slightly increased hitbox for mobile friendliness
+            speed: 0,
+            gravity: 1.4,
+            jump: 28,
+            rotation: 0,
+            terminalVelocity: 35,
+
+            draw: function() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                ctx.lineWidth = 10;
+                ctx.strokeStyle = "black";
+                ctx.lineJoin = "round";
+
+                // Body
+                ctx.fillStyle = "#f1c40f";
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 75, 55, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Belly
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.ellipse(8, 20, 52, 28, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Wing
+                ctx.save();
+                let flapVal = Math.sin(frames * 0.8) * 12;
+                ctx.translate(-28, 8);
+                ctx.rotate((this.speed < 0 ? -35 : 15 + flapVal) * DEGREE);
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 42, 24, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+
+                // Eye
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.arc(35, -18, 24, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Pupil
+                ctx.fillStyle = "black";
+                ctx.beginPath();
+                ctx.arc(46, -18, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Beak
+                ctx.fillStyle = "#e67e22";
+                ctx.beginPath();
+                ctx.moveTo(50, -5);
+                ctx.lineTo(110, 5);
+                ctx.lineTo(50, 25);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
+            },
+
+            update: function() {
+                if(state.current === state.getReady) {
+                    this.y = H/2 + Math.sin(frames/10) * 50;
+                    this.rotation = 0;
+                } else {
+                    this.speed += this.gravity;
+                    if(this.speed > this.terminalVelocity) this.speed = this.terminalVelocity;
+                    this.y += this.speed;
+
+                    let targetRotation = (this.speed / 30) * 75 * DEGREE;
+                    if (this.speed < 0) targetRotation = -25 * DEGREE;
+                    this.rotation += (targetRotation - this.rotation) * 0.25;
+
+                    if(this.y + this.radius >= H - fg.h) {
+                        this.y = H - fg.h - this.radius;
+                        if(state.current === state.game) state.current = state.over;
+                    }
+
+                    if(this.y - this.radius <= 0) {
+                        this.y = this.radius;
+                        this.speed = 0;
+                    }
+                }
+            },
+
+            flap: function() {
+                this.speed = -this.jump;
+            }
+        };
+
+        const pipes = {
+            pairs: [],
+            w: 180,
+            gap: 480, // Slightly wider gap for better cross-platform playability
+            dx: 12,
+            
+            draw: function() {
+                this.pairs.forEach(p => {
+                    let grad = ctx.createLinearGradient(p.x, 0, p.x + this.w, 0);
+                    grad.addColorStop(0, "#2ecc71");
+                    grad.addColorStop(0.3, "#58d68d");
+                    grad.addColorStop(1, "#145a32");
+
+                    ctx.fillStyle = grad;
+                    ctx.strokeStyle = "#0d3b21";
+                    ctx.lineWidth = 8;
+
+                    ctx.fillRect(p.x, 0, this.w, p.top);
+                    ctx.strokeRect(p.x, -20, this.w, p.top + 20);
+                    ctx.fillRect(p.x - 20, p.top - 80, this.w + 40, 80);
+                    ctx.strokeRect(p.x - 20, p.top - 80, this.w + 40, 80);
+
+                    let bottomY = p.top + this.gap;
+                    let bottomH = H - fg.h - bottomY;
+                    ctx.fillRect(p.x, bottomY, this.w, bottomH);
+                    ctx.strokeRect(p.x, bottomY, this.w, bottomH);
+                    ctx.fillRect(p.x - 20, bottomY, this.w + 40, 80);
+                    ctx.strokeRect(p.x - 20, bottomY, this.w + 40, 80);
+                });
+            },
+
+            update: function() {
+                if(state.current !== state.game) return;
+                
+                if(frames % 65 === 0) {
+                    this.pairs.push({
+                        x: W,
+                        top: Math.random() * (H - fg.h - this.gap - 500) + 200,
+                        passed: false
+                    });
+                }
+
+                this.pairs.forEach((p, i) => {
+                    p.x -= this.dx;
+
+                    // Collision detection with bird
+                    if(bird.x + 65 > p.x && bird.x - 65 < p.x + this.w) {
+                        if(bird.y - 45 < p.top || bird.y + 45 > p.top + this.gap) {
+                            state.current = state.over;
+                        }
+                    }
+
+                    if(!p.passed && bird.x > p.x + this.w) {
+                        p.passed = true;
+                        score.value++;
+                        score.best = Math.max(score.value, score.best);
+                        localStorage.setItem("flappy_vert_best", score.best);
+                    }
+
+                    if(p.x + this.w < -200) this.pairs.splice(i, 1);
+                });
+            }
+        };
+
+        const score = {
+            value: 0,
+            best: localStorage.getItem("flappy_vert_best") || 0,
+            draw: function() {
+                if(state.current === state.game) {
+                    ctx.textAlign = "center";
+                    ctx.fillStyle = "white";
+                    
+                    ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
+                    ctx.shadowBlur = 15;
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 10;
+                    
+                    ctx.font = "900 180px 'Inter', sans-serif";
+                    ctx.fillText(this.value, W/2, 300);
+                    
+                    ctx.shadowBlur = 0;
+                    ctx.shadowOffsetY = 0;
+                }
+            }
+        };
+
+        const drawUI = () => {
+            ctx.textAlign = "center";
+            
+            if(state.current === state.getReady) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+                ctx.fillRect(0, 0, W, H);
+                
+                ctx.fillStyle = "white";
+                ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+                ctx.shadowBlur = 20;
+                ctx.font = "900 130px 'Inter', sans-serif";
+                ctx.fillText("FLAPPY", W/2, 400);
+                
+                ctx.fillStyle = "#2c3e50";
+                ctx.shadowBlur = 0;
+                ctx.font = "900 130px 'Inter', sans-serif";
+                ctx.fillText("ULTRA", W/2, 530);
+                
+                ctx.font = "700 45px 'Inter', sans-serif";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+                ctx.fillText("PC: SPACE / MOBILE: TAP", W/2, H - 600);
+            }
+
+            if(state.current === state.over) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+                ctx.fillRect(0, 0, W, H);
+                
+                ctx.fillStyle = "#ff4757";
+                ctx.font = "900 160px 'Inter', sans-serif";
+                ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+                ctx.shadowBlur = 30;
+                ctx.fillText("GAME OVER", W/2, H/2 - 300);
+                
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = "white";
+                ctx.font = "700 80px 'Inter', sans-serif";
+                ctx.fillText("SCORE", W/2, H/2 - 50);
+                ctx.font = "900 180px 'Inter', sans-serif";
+                ctx.fillText(score.value, W/2, H/2 + 120);
+                
+                ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+                ctx.font = "700 60px 'Inter', sans-serif";
+                ctx.fillText(`BEST: ${score.best}`, W/2, H/2 + 250);
+
+                ctx.fillStyle = "white";
+                ctx.font = "600 50px 'Inter', sans-serif";
+                ctx.globalAlpha = 0.5 + Math.sin(frames * 0.1) * 0.3;
+                ctx.fillText("TAP TO TRY AGAIN", W/2, H/2 + 450);
+                ctx.globalAlpha = 1.0;
+            }
+        };
+
+        const resetGame = () => {
+            bird.y = H/2;
+            bird.speed = 0;
+            bird.rotation = 0;
+            pipes.pairs = [];
+            score.value = 0;
+            state.current = state.getReady;
+        };
+
+        const loop = () => {
+            ctx.clearRect(0, 0, W, H);
+            bg.update();
+            pipes.update();
+            fg.update();
+            bird.update();
+            bg.draw();
+            pipes.draw();
+            fg.draw();
+            bird.draw();
+            score.draw();
+            drawUI();
+            frames++;
+            requestAnimationFrame(loop);
+        };
+
+        loop();
+
+    </script>
+</body>
+</html>
