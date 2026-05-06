@@ -8,15 +8,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Prepare Folders
+        run: |
+          mkdir www
+          cp index.html www/
       - name: Install Tools
         run: |
           npm install @capacitor/cli @capacitor/core @capacitor/android
-          npx cap init "MyGame" "com.myname.game" --web-dir .
+          npx cap init "MyGame" "com.myname.game" --web-dir www
           npx cap add android
-      - name: Copy Files
-        run: npx cap copy android
       - name: Build APK
         run: |
+          npx cap copy android
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
