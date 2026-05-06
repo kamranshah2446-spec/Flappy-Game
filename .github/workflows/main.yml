@@ -5,38 +5,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          java-version: '17'
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          
-      - name: Prepare Game Folder
+      - name: Build
         run: |
           mkdir -p www
-          cp index.html www/ || echo "index.html not found"
-          
-      - name: Fresh Install Tools
-        run: |
-          rm -rf android
+          cp index.html www/ 2>/dev/null || echo "Using existing folder"
           npm install @capacitor/cli @capacitor/core @capacitor/android
-          npx cap init "MyGame" "com.myname.game" --web-dir www
+          npx cap init "MyGame" "com.myname.game" --web-dir www || true
+          rm -rf android
           npx cap add android
-          
-      - name: Build APK
-        run: |
           npx cap copy android
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug -Dorg.gradle.java.home=$JAVA_HOME_21_X64
-          
-      - name: Upload Finished APK
+          ./gradlew assembleDebug
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: game-apk
